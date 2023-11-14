@@ -5,19 +5,19 @@ import os
 from IHiterEnv.parameter import TP
 from IHiterEnv.policy import RandomPolicy
 from IHiterEnv.agent import TeamAction
-
+import torch
 MaxEpisode = 2000
 MaxEpisodeSteps = 100000
 
-if not os.path.exists(os.path.abspath('.') \
-    + '/train_data'):
-    train_file = os.path.abspath('.') \
-    + '/train_data' + '/'
+if not os.path.exists(os.path.abspath('.') + '/train_data'):
+    train_file = os.path.abspath('.') + '/train_data' + '/'
     os.mkdir(train_file)
+train_file = os.path.abspath('.') + '/train_data' + '/'
 
 RLBrain = DuelingDQN(train_dir=train_file)
 env = ICRA_Env()
 team_action = TeamAction()
+
 
 with open(train_file + 'param.txt', 'w') as f:
     f.writelines(["learning rate : " + str(RLBrain.LearningRate) + '\n',
@@ -34,7 +34,7 @@ def run_n_episode(n):
         Episode_steps, total_reward = 0, 0
         obs= env.reset()
         for _ in range(MaxEpisodeSteps):
-            Blue_Action = RLBrain.EvalDicision(obs)
+            Blue_Action = RLBrain.Eval_decision(obs)
             next_state, StepReward, isGameOver, _ = env.step(Blue_Action)
             obs = next_state
             Episode_steps += 1
@@ -54,12 +54,12 @@ def train():
     blue_win_times, red_win_times = 0, 0
     for episode in range(1, MaxEpisode + 1):
         Episode_steps, total_reward = 0, 0
-        obs= env.reset()
+        obs = env.reset()#返回全部机器人+buff环境状态5*6的向量
         for _ in range(MaxEpisodeSteps):
-            Blue_Action = RLBrain.TrainDicision(obs)
+            Blue_Action = RLBrain.Train_decision(obs)  # 使用 PyTorch 版本的 train_decision
             next_state, StepReward, isGameOver, _ = env.step(Blue_Action)
-            RLBrain.StoreTransition(obs, Blue_Action, StepReward, next_state)
-            RLBrain.Learn()
+            RLBrain.StoreTransition(obs, Blue_Action, StepReward, next_state)  # 存储记忆
+            RLBrain.Learn()  # 学习更新
             obs = next_state
             Episode_steps += 1
             total_reward += StepReward
@@ -77,8 +77,8 @@ def train():
             run_n_episode(10)
 
     print("the end")
-    RLBrain.Save("final")
-
+    # RLBrain.Save("final")
+    torch.save(RLBrain.eval_net.state_dict(), train_file + 'final_model.pth')  # 使用 PyTorch 保存模型
 
 if __name__ == "__main__":
     train()
